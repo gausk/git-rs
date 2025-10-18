@@ -1,18 +1,23 @@
 use anyhow::{Context, Result, anyhow};
-use sha1::{Digest, Sha1};
-use std::fs::{create_dir_all, rename, File};
-use std::io::{copy, sink, Write};
-use std::path::{Path, PathBuf};
 use flate2::Compression;
 use flate2::write::ZlibEncoder;
+use sha1::{Digest, Sha1};
+use std::fs::{File, create_dir_all, rename};
+use std::io::{Write, copy, sink};
+use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
 pub fn git_hash_object(file: PathBuf, write: bool) -> Result<()> {
     let hash = if write {
         let mut tmp_file = NamedTempFile::new()?;
         let hash = write_blob(file.as_path(), &mut tmp_file)?;
-        create_dir_all(format!(".git/objects/{}", &hash[..2])).context("creating git object directory")?;
-        rename(tmp_file, format!(".git/objects/{}/{}", &hash[..2], &hash[2..])).context("renaming object")?;
+        create_dir_all(format!(".git/objects/{}", &hash[..2]))
+            .context("creating git object directory")?;
+        rename(
+            tmp_file,
+            format!(".git/objects/{}/{}", &hash[..2], &hash[2..]),
+        )
+        .context("renaming object")?;
         hash
     } else {
         write_blob(file.as_path(), &mut sink())?
@@ -22,7 +27,8 @@ pub fn git_hash_object(file: PathBuf, write: bool) -> Result<()> {
 }
 
 fn write_blob<W: Write>(file: &Path, writer: W) -> Result<String> {
-    let mut file = File::open(&file).map_err(|e| anyhow!("error reading provided file path: {e}"))?;
+    let mut file =
+        File::open(file).map_err(|e| anyhow!("error reading provided file path: {e}"))?;
     let metadata = file.metadata().context("error getting metadata")?;
     let size = metadata.len();
     let encoder = ZlibEncoder::new(writer, Compression::default());
@@ -42,7 +48,10 @@ struct HashWriter<W> {
     hasher: Sha1,
 }
 
-impl<W> Write for HashWriter<W> where W: Write {
+impl<W> Write for HashWriter<W>
+where
+    W: Write,
+{
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let n = self.writer.write(buf)?;
         self.hasher.update(&buf[..n]);
