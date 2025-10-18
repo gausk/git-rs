@@ -1,0 +1,42 @@
+name: Rust
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Check formatting
+        run: cargo fmt -- --check
+      - name: Lint with Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - name: Build all crates
+        run: cargo build --workspace --verbose --release
+      - name: Run all binaries
+        run: |
+          for crate in $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name'); do
+            echo "Running $crate..."
+            cargo run -p "$crate" --release || true
+          done
+      - name: Run all tests
+        run: cargo test --workspace --verbose --release
+      - name: Run all examples
+        run: |
+          echo "Running all examples..."
+          for example in $(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select(.kind[] == "example") | .name'); do
+            echo "Running example: $example"
+            cargo run --example "$example" --release || echo "Failed to run example $example"
+          done
+      - name: Generate documentation
+        run: cargo doc --workspace --no-deps --release
