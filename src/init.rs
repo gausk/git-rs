@@ -1,6 +1,7 @@
 use anyhow::Result;
 use std::fs;
 
+/// Create required directory for git
 pub fn git_init() -> Result<()> {
     fs::create_dir(".git")?;
     fs::create_dir(".git/objects")?;
