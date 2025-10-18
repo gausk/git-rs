@@ -1,10 +1,10 @@
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand};
 use flate2::read::ZlibDecoder;
 use std::ffi::CStr;
 use std::fs;
 use std::fs::File;
-use std::io::{copy, stdout, BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, copy, stdout};
 
 #[derive(Parser, Debug)]
 pub struct Args {
