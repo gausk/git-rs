@@ -10,3 +10,4 @@ flate2 = { version = "1.0.34", features = ["zlib-rs"] }
 sha1 = "0.10.6"
 hex = "0.4.3"
 tempfile = "3.23.0"
+ignore = "0.4.24"

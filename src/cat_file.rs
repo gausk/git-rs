@@ -1,5 +1,5 @@
 use crate::ls_tree::git_read_tree_content;
-use crate::object_read::{ObjectKind, read_git_object};
+use crate::object_read::{Object, ObjectKind};
 use anyhow::{Result, bail, ensure};
 use std::io::{Read, copy, stdout};
 
@@ -8,7 +8,7 @@ pub fn git_cat_file(pretty_print: bool, object_hash: &str) -> Result<()> {
         pretty_print,
         "type or -p need to be passed and we don't support type at the moment"
     );
-    let object = read_git_object(object_hash)?;
+    let object = Object::read_git_object(object_hash)?;
     match object.kind {
         ObjectKind::Blob => {
             let mut sout = stdout().lock();

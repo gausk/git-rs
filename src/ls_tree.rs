@@ -1,49 +1,10 @@
-use crate::object_read::{Object, ObjectKind, read_git_object};
+use crate::object_read::{Object, ObjectKind};
 use anyhow::{Context, Result, anyhow, bail};
 use std::ffi::CStr;
 use std::io::{BufRead, Write, stdout};
 
-/// A *tree object* in Git represents a directory snapshot.
-///
-/// Each tree entry maps a filename to a blob (file) or another tree (subdirectory),
-/// along with its file mode (permissions).
-///
-/// The raw (uncompressed) format of a tree object is a concatenation of entries:
-///
-///     "<file mode> <file name>\0<20-byte binary object id>"
-///
-/// - `<file mode>`: ASCII digits like `100644` (normal file), `100755` (executable), or `40000` (directory)
-/// - `<file name>`: the file or directory name (no path separators)
-/// - `<20-byte binary object id>`: raw SHA-1/SHA-256 bytes of the referenced blob or tree
-///
-/// The full uncompressed content begins with the header:
-///     "tree <size>\0<entries>"
-///
-/// Steps:
-/// 1. Construct the concatenated entry list from directory contents.
-/// 2. Prefix it with `"tree <size>\0"`, where `<size>` is the total byte length of entries.
-/// 3. Compute the SHA-1 (or SHA-256) hash of this uncompressed data.
-/// 4. Hex-encode the hash to get the tree’s object ID.
-/// 5. Compress the data using zlib.
-/// 6. Store it under:
-///    .git/objects/<first 2 hex chars>/<remaining 38 chars>
-///
-/// Example (a directory containing a single file `hello.txt`):
-///
-///   Entry:
-///     100644 hello.txt\0<20-byte blob-id>
-///   Uncompressed form:
-///     tree 37\0<entry bytes>
-///   SHA-1 hash:
-///     4b825dc642cb6eb9a060e54bf8d69288fbee4904
-///   Stored at:
-///     .git/objects/4b/825dc642cb6eb9a060e54bf8d69288fbee4904
-///
-/// Note: Tree objects form a hierarchy — a commit object references
-///       the root tree, which may reference subtrees and blobs recursively.
-///
 pub fn git_ls_tree(name_only: bool, tree_hash: &str) -> Result<()> {
-    let object = read_git_object(tree_hash)?;
+    let object = Object::read_git_object(tree_hash)?;
     match object.kind {
         ObjectKind::Tree => git_read_tree_content(object, name_only),
         _ => Err(anyhow!("not a tree object")),
