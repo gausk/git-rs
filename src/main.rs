@@ -1,4 +1,5 @@
 use crate::cat_file::git_cat_file;
+use crate::commit::git_write_commit;
 use crate::hash_object::git_hash_object;
 use crate::init::git_init;
 use crate::ls_tree::git_ls_tree;
@@ -8,6 +9,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod cat_file;
+mod commit;
 mod hash_object;
 mod init;
 mod ls_tree;
@@ -40,29 +42,49 @@ enum Command {
         tree_hash: String,
     },
     WriteTree,
+    CommitTree {
+        #[clap(short = 'm')]
+        message: String,
+        #[clap(short = 'p')]
+        parent_hash: Option<String>,
+        tree_hash: String,
+    },
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
     match args.command {
-        Command::Init => git_init(),
+        Command::Init => {
+            git_init()?;
+        }
         Command::CatFile {
             pretty_print,
             hash_object,
-        } => git_cat_file(pretty_print, hash_object.as_str()),
+        } => {
+            git_cat_file(pretty_print, hash_object.as_str())?;
+        }
         Command::HashObject { write, file } => {
             let hash = git_hash_object(&file, write)?;
             println!("{}", hex::encode(hash));
-            Ok(())
         }
         Command::LsTree {
             name_only,
             tree_hash,
-        } => git_ls_tree(name_only, tree_hash.as_str()),
+        } => {
+            git_ls_tree(name_only, tree_hash.as_str())?;
+        }
         Command::WriteTree => {
             let hash = git_write_tree()?;
             println!("{}", hex::encode(hash));
-            Ok(())
+        }
+        Command::CommitTree {
+            message,
+            parent_hash,
+            tree_hash,
+        } => {
+            let hash = git_write_commit(tree_hash, parent_hash, message)?;
+            println!("{}", hex::encode(hash));
         }
     }
+    Ok(())
 }

@@ -1,6 +1,6 @@
 use crate::ls_tree::git_read_tree_content;
 use crate::object_read::{Object, ObjectKind};
-use anyhow::{Result, bail, ensure};
+use anyhow::{Result, ensure};
 use std::io::{Read, copy, stdout};
 
 pub fn git_cat_file(pretty_print: bool, object_hash: &str) -> Result<()> {
@@ -10,7 +10,7 @@ pub fn git_cat_file(pretty_print: bool, object_hash: &str) -> Result<()> {
     );
     let object = Object::read_git_object(object_hash)?;
     match object.kind {
-        ObjectKind::Blob => {
+        ObjectKind::Blob | ObjectKind::Commit => {
             let mut sout = stdout().lock();
             // Read max of the size from the file.
             // Protect against zipbomb.
@@ -25,9 +25,6 @@ pub fn git_cat_file(pretty_print: bool, object_hash: &str) -> Result<()> {
         }
         ObjectKind::Tree => {
             git_read_tree_content(object, false)?;
-        }
-        ObjectKind::Commit => {
-            bail!("Commit is not supported");
         }
     }
     Ok(())
