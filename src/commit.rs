@@ -61,7 +61,7 @@ use std::io::{BufRead, BufReader, Cursor};
 ///
 pub fn git_write_commit(
     tree_hash: String,
-    parent_hash: Option<String>,
+    parent_hash: Option<&str>,
     message: String,
 ) -> Result<[u8; 20]> {
     let mut out = String::new();

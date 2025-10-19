@@ -4,8 +4,9 @@ use crate::hash_object::git_hash_object;
 use crate::init::git_init;
 use crate::ls_tree::git_ls_tree;
 use crate::write_tree::git_write_tree;
-use anyhow::Result;
+use anyhow::{Context, Result, bail, ensure};
 use clap::{Parser, Subcommand};
+use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 
 mod cat_file;
@@ -49,6 +50,10 @@ enum Command {
         parent_hash: Option<String>,
         tree_hash: String,
     },
+    Commit {
+        #[clap(short = 'm')]
+        message: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -82,8 +87,26 @@ fn main() -> Result<()> {
             parent_hash,
             tree_hash,
         } => {
-            let hash = git_write_commit(tree_hash, parent_hash, message)?;
+            let hash = git_write_commit(tree_hash, parent_hash.as_deref(), message)?;
             println!("{}", hex::encode(hash));
+        }
+        Command::Commit { message } => {
+            let tree_hash = git_write_tree()?;
+            let head_ref =
+                read_to_string(".git/HEAD").with_context(|| "failed to read .git/HEAD")?;
+            let head_ref = head_ref.trim();
+            let Some(branch_path) = head_ref.strip_prefix("ref: ") else {
+                bail!("you can't commit in a headless state");
+            };
+            let parent_hash = read_to_string(format!(".git/{}", branch_path.trim()))
+                .with_context(|| format!("failed to read .git/{}", branch_path.trim()))?;
+            let parent_hash = parent_hash.trim();
+            ensure!(parent_hash.len() == 40, "bad parent hash");
+            let commit_hash = git_write_commit(hex::encode(tree_hash), Some(parent_hash), message)?;
+            let commit_hash = hex::encode(commit_hash);
+            write(format!(".git/{}", branch_path), &commit_hash)
+                .with_context(|| format!("failed to write .git/{}", branch_path))?;
+            println!("{commit_hash}");
         }
     }
     Ok(())
